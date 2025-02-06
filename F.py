@@ -1,43 +1,40 @@
 import random
-import telebot
+import datetime
+from telegram.ext import Updater, CommandHandler
 
-# Luhn algorithm to generate credit card numbers
-def generate_credit_card_number(prefix, length):
-    def luhn_checksum(card_number):
-        def digits_of(n):
-            return [int(d) for d in str(n)]
-        digits = digits_of(card_number)
-        odd_digits = digits[-1::-2]
-        even_digits = digits[-2::-2]
-        checksum = 0
-        checksum += sum(odd_digits)
-        for d in even_digits:
-            checksum += sum(digits_of(d * 2))
-        return checksum % 10
+# Telegram bot token
+BOT_TOKEN = 'your_bot_token'
 
-    card_number = prefix
-    while len(card_number) < length - 1:
-        card_number += str(random.randint(0, 9))
-    checksum = luhn_checksum(card_number + '0')
-    if checksum == 0:
-        return card_number + str(random.randint(1, 9))
-    else:
-        return card_number + str(10 - checksum)
+# Function to generate a random credit card number
+def generate_card_number():
+    return ''.join(str(random.randint(0, 9)) for _ in range(16))
 
-# Telegram bot configuration
-bot_token = 'YOUR_BOT_TOKEN'
-bot = telebot.TeleBot(bot_token)
+# Function to generate a random expiration date
+def generate_expiration_date():
+    current_year = datetime.datetime.now().year
+    month = str(random.randint(1, 12)).zfill(2)
+    year = str(random.randint(current_year, current_year + 5))
+    return month + '/' + year
 
-# Generate and send credit card numbers
-@bot.message_handler(commands=['start'])
-def start_command(message):
-    bot.send_message(message.chat.id, "Generating credit card numbers...")
-    with open('payment_cards.txt', 'w') as file:
-        for i in range(100):  # Generate 100 credit card numbers
-            card_number = generate_credit_card_number('5432', 16)  # Example prefix and length
-            file.write(card_number + '\n')
-            bot.send_message(message.chat.id, card_number)
-    bot.send_message(message.chat.id, "Credit card numbers generated and saved to payment_cards.txt")
+# Function to generate a random CVV
+def generate_cvv():
+    return ''.join(str(random.randint(0, 9)) for _ in range(3))
 
-# Run the bot
-bot.polling()
+# Function to handle the /start command
+def start(update, context):
+    card_number = generate_card_number()
+    expiration_date = generate_expiration_date()
+    cvv = generate_cvv()
+    message = f"Your new credit card details:\n\nCard Number: {card_number}\nExpiration Date: {expiration_date}\nCVV: {cvv}"
+    context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+
+# Main function to start the bot
+def main():
+    updater = Updater(BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start))
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
